@@ -1,7 +1,7 @@
 package com.github.disc99.template.engine;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.Arrays;

@@ -1,13 +1,10 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'maven'
 
-sourceCompatibility = 1.5
-version = '1.0'
-jar {
-    manifest {
-        attributes 'Implementation-Title': 'Gradle Quickstart', 'Implementation-Version': version
-    }
-}
+sourceCompatibility = 1.8
+group = 'com.github.disc99.template'
+version = '0.0.1'
 
 repositories {
     mavenCentral()
@@ -18,14 +15,29 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.+'
 }
 
-test {
-    systemProperties 'property': 'value'
+task sourcesJar(type: Jar, dependsOn:classes) {
+     classifier = 'sources'
+     from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
 }
 
 uploadArchives {
     repositories {
-       flatDir {
-           dirs 'repos'
-       }
+        mavenDeployer {
+            repository(url: "file:${System.getProperty('user.home')}/data/src/java/maven")
+        }
     }
+}
+
+task 	() {
+	uploadArchives {
+	    repositories {
+	        mavenDeployer {
+	            repository(url: "file:${System.getProperty('user.home')}/.m2/repository/")
+	        }
+	    }
+	}
 }
