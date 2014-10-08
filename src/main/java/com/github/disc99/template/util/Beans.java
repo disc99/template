@@ -62,33 +62,6 @@ public final class Beans {
 
     }
 
-    /**
-     * Set the bean property
-     * 
-     * @param bean bean
-     * @param propertyName propertyName
-     * @param value value to set
-     */
-    public static void setProperty(Object bean, String propertyName, Object value) {
-
-        int p = propertyName.indexOf(PATH_SEPARATOR);
-        if (p > 0) {
-            Object property = getProperty(bean, propertyName.substring(0, p));
-            setProperty(property, propertyName.substring(p + 1), value);
-            return;
-        }
-
-        Class<?> clazz = bean.getClass();
-        PropertyDescriptor descriptor = getPropertyDescriptor(clazz, propertyName);
-        Method method = descriptor.getWriteMethod();
-        if (method == null) {
-            String message = String.format("WriteMethod not found: class=%s, property=%s", clazz.getName(), propertyName);
-            throw new PropertyAccessRuntimeException(message);
-        }
-        invoke(bean, method, new Object[] { value });
-
-    }
-
     @VisibleForTesting
     static PropertyDescriptor getPropertyDescriptor(Class<?> clazz, String propertyName) {
         PropertyDescriptor propertyDescriptor = null;
