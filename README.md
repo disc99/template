@@ -1,4 +1,5 @@
-# Minimal template engine
+# Template
+Template is minimal template engine.
 
 ## How to use
 
