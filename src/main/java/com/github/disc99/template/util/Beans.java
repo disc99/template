@@ -7,28 +7,24 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.github.disc99.template.exception.PropertyAccessRuntimeException;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 
 /**
  * Bean utilities
  */
 public final class Beans {
 
-    private static Cache<Class<?>, Map<String, PropertyDescriptor>> CACHE;
+    private static Map<Class<?>, Map<String, PropertyDescriptor>> CACHE;
     static {
-        CACHE = CacheBuilder.newBuilder().concurrencyLevel(Runtime.getRuntime().availableProcessors()).weakKeys().build();
+        CACHE = new ConcurrentHashMap<>();
     }
 
     private static final char PATH_SEPARATOR = '.';
@@ -62,8 +58,7 @@ public final class Beans {
 
     }
 
-    @VisibleForTesting
-    static PropertyDescriptor getPropertyDescriptor(Class<?> clazz, String propertyName) {
+    private static PropertyDescriptor getPropertyDescriptor(Class<?> clazz, String propertyName) {
         PropertyDescriptor propertyDescriptor = null;
         int p = propertyName.indexOf(PATH_SEPARATOR);
         if (p > 0) {
@@ -82,42 +77,32 @@ public final class Beans {
         return propertyDescriptor;
     }
 
-    @VisibleForTesting
-    static Map<String, PropertyDescriptor> getPropertyDescriptors(final Class<?> clazz) {
-        try {
-            return CACHE.get(clazz, new Callable<Map<String, PropertyDescriptor>>() {
-                @Override
-                public Map<String, PropertyDescriptor> call() throws Exception { // SUPPRESS CHECKSTYLE
-                    Map<String, PropertyDescriptor> descriptors = Maps.newHashMap();
-                    for (BeanInfo info : collectBeanInfo(clazz)) {
-                        for (PropertyDescriptor propertyDescriptor : info.getPropertyDescriptors()) {
-                            PropertyDescriptor existence = descriptors.get(propertyDescriptor.getName());
-                            Class<?> existenceType = existence == null ? null : existence.getPropertyType();
-                            if (existenceType == null || !propertyDescriptor.getPropertyType().isAssignableFrom(existenceType)) {
-                                descriptors.put(propertyDescriptor.getName(), propertyDescriptor);
-                            }
-                        }
-                    }
-                    return ImmutableMap.copyOf(descriptors);
-                }
-            });
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+    private static Map<String, PropertyDescriptor> getPropertyDescriptors(final Class<?> clazz) {
+    	return CACHE.computeIfAbsent(clazz, key -> {
+            Map<String, PropertyDescriptor> descriptors = new HashMap<>();
+            collectBeanInfo(key).stream()
+            	.flatMap(info -> Stream.of(info.getPropertyDescriptors()))
+            	.forEach(propertyDescriptor -> {
+					PropertyDescriptor existence = descriptors.get(propertyDescriptor.getName());
+					Class<?> existenceType = existence == null ? null : existence.getPropertyType();
+					if (existenceType == null || !propertyDescriptor.getPropertyType().isAssignableFrom(existenceType)) {
+					    descriptors.put(propertyDescriptor.getName(), propertyDescriptor);
+					}
+            	});
+            return descriptors;
+    	});
     }
 
     private static List<BeanInfo> collectBeanInfo(Class<?> clazz) {
-        Builder<BeanInfo> builder = ImmutableList.builder();
+        List<BeanInfo> beanInfoList = new ArrayList<>();
         BeanInfo info = getBeanInfo(clazz);
         if (info != null) {
-            builder.add(info);
+            beanInfoList.add(info);
         }
-        for (Class<?> i : clazz.getInterfaces()) {
-            if (Modifier.isPublic(i.getModifiers())) {
-                builder.addAll(collectBeanInfo(i));
-            }
-        }
-        return builder.build();
+        Arrays.stream(clazz.getInterfaces())
+        	.filter(i -> Modifier.isPublic(i.getModifiers()))
+        	.forEach(i -> beanInfoList.addAll(collectBeanInfo(i)));
+        return beanInfoList;
     }
 
     private static BeanInfo getBeanInfo(Class<?> clazz) {
