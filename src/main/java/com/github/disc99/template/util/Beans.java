@@ -22,11 +22,7 @@ import com.github.disc99.template.exception.PropertyAccessRuntimeException;
  */
 public final class Beans {
 
-    private static Map<Class<?>, Map<String, PropertyDescriptor>> CACHE;
-    static {
-        CACHE = new ConcurrentHashMap<>();
-    }
-
+    private static Map<Class<?>, Map<String, PropertyDescriptor>> CACHE = new ConcurrentHashMap<>();
     private static final char PATH_SEPARATOR = '.';
 
     /**
